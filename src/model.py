@@ -1,4 +1,3 @@
-rc/model.py
 import numpy as np
 
 class SelfAttention:
