@@ -1,53 +1,173 @@
-# Self-Attention Minimal Implementation
+# Minimal Self-Attention Model (Lecture Assignment)
 
 ## 概要
-本リポジトリでは、講義で扱った Self-Attention 機構を
-全結合層のみからなる最小構成で実装し、
-簡単な系列分類問題に適用した。
 
-Transformer 全体の実装ではなく、
-Attention 機構そのものの理解を目的としている。
+本リポジトリは、講義で扱った **Self-Attention アルゴリズム**を理解することを目的として、
+NumPy を用いて最小構成で実装・実験したものである。
 
-## 目的
-- Self-Attention の計算内容をコードとして理解する
-- 平均プーリングとの違いを比較する
-- Attention が系列中のどの位置を重視するかを可視化する
+近年は LLM によりコード生成が容易であるため、本課題では **アルゴリズムの数式的理解と説明**を重視し、
+モデル構造・計算手順・実装との対応関係を明示することに重点を置いた。
 
-## モデル構成
-- 入力系列長: 8
-- 各要素の次元数: 8
-- Attention head: 1
-- 使用層: 全結合層のみ
-- 活性化関数: ReLU / Softmax
+---
 
-## Self-Attention の計算
-入力系列を X とすると、以下の計算を行う。
+## 問題設定
 
-Q = X W_Q  
-K = X W_K  
-V = X W_V  
+長さ \(T\)、特徴次元 \(d\) の系列入力
 
-Attention 重み A は次式で求める。
+\[
+X = (x_1, x_2, \dots, x_T), \quad x_t \in \mathbb{R}^d
+\]
 
-A = softmax( Q K^T / sqrt(d) )
+を入力とし、系列全体を 2 クラスに分類する問題を考える。
 
-出力は次のように計算される。
+本実装では、系列の前半と後半の統計量に基づいてラベルを付与した
+人工データセットを自作して用いた。
 
-Y = A V
+---
 
-## 実装内容
-- NumPy を用いて Self-Attention を自作実装
-- 系列分類タスクのための簡単なデータを生成
-- 平均プーリングモデルとの性能比較を実施
+## Self-Attention のアルゴリズム
 
-## 実験結果
-- Attention を用いたモデルは、重要な系列位置に重みを集中させることが確認できた
-- 平均プーリングよりも高い分類精度を達成した
-- Attention 重みの可視化により、モデルの振る舞いを直感的に理解できた
+### 1. Query / Key / Value の計算
 
-（figures/attention.png に結果を保存）
+各時刻 \(t\) の入力ベクトル \(x_t\) に対し、線形変換によって
+Query, Key, Value を計算する。
 
-## 実行方法
-```bash
-pip install -r requirements.txt
-python src/train.py
+\[
+\begin{aligned}
+q_t &= x_t W_Q \\
+k_t &= x_t W_K \\
+v_t &= x_t W_V
+\end{aligned}
+\]
+
+ここで、
+
+\[
+W_Q, W_K, W_V \in \mathbb{R}^{d \times d}
+\]
+
+は学習可能な重み行列である。
+
+---
+
+### 2. Scaled Dot-Product Attention
+
+時刻 \(t\) における、時刻 \(s\) への Attention スコアは次式で定義される。
+
+\[
+e_{ts} = \frac{q_t \cdot k_s}{\sqrt{d}}
+\]
+
+内積を次元数 \(d\) の平方根でスケーリングするのは、
+次元が大きくなった際の値の発散を防ぐためである。
+
+---
+
+### 3. Attention 重みの正規化
+
+スコア \(e_{ts}\) に softmax を適用し、Attention 重みを得る。
+
+\[
+\alpha_{ts} =
+\frac{\exp(e_{ts})}
+{\sum_{j=1}^{T} \exp(e_{tj})}
+\]
+
+これにより、各時刻 \(t\) から系列全体 \(1 \sim T\) への重み付き参照が可能となる。
+
+---
+
+### 4. 出力系列の計算
+
+Attention 重みを用いて、各時刻の出力ベクトル \(y_t\) を計算する。
+
+\[
+y_t = \sum_{s=1}^{T} \alpha_{ts} v_s
+\]
+
+この操作により、各時刻の表現は系列全体の情報を取り込んだものとなる。
+
+---
+
+## 系列全体の集約（Average Pooling）
+
+Transformer では [CLS] トークンを用いることが多いが、
+本実装では最小構成と理解の容易さを優先し、平均プーリングを用いた。
+
+\[
+z = \frac{1}{T} \sum_{t=1}^{T} y_t
+\]
+
+これにより、系列全体を表す固定長ベクトル
+\(z \in \mathbb{R}^d\) を得る。
+
+---
+
+## 分類
+
+最終的な分類は線形分類器で行う。
+
+\[
+\hat{y} = z W_C
+\]
+
+ここで、
+
+\[
+W_C \in \mathbb{R}^{d \times C}
+\]
+
+であり、本課題ではクラス数 \(C=2\) の二値分類を扱った。
+
+---
+
+## 学習と実験結果
+
+50 epoch の学習を行った結果、損失および精度は以下のように推移した。
+
+- Accuracy: 約 0.48
+- Loss: ほぼ一定
+
+---
+
+## 考察
+
+本実装では NumPy による最小構成を目的としており、
+
+- 自動微分を使用していない
+- 勾配計算・パラメータ更新を簡略化している
+
+そのため、Attention の重み行列は十分に更新されず、
+分類精度は大きく改善しなかった。
+
+しかし、Self-Attention における
+
+- Query / Key / Value の役割
+- 内積による関連度計算
+- softmax による正規化
+- 系列全体の情報統合
+
+といったアルゴリズムの本質的な構造は、
+数式と実装の対応を通じて確認できたと考える。
+
+---
+
+## 実装との対応関係
+
+- Query / Key / Value の計算  
+  → `src/model.py : SelfAttention.forward`
+- Attention スコアおよび softmax  
+  → 同上
+- Average Pooling  
+  → `src/model.py : AveragePooling`
+- 学習ループ  
+  → `src/train.py`
+- データ生成  
+  → `src/data.py`
+
+---
+
+## 参考文献
+
+- Vaswani et al., *Attention Is All You Need*, NeurIPS 2017  
+
