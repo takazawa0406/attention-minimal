@@ -30,7 +30,7 @@ $$
 本課題で実装したモデルの全体構造を以下に示す。
 Self-Attentを最小構成で用い、系列全体を分類する。
 
-'''
+```
 Input Sequence (T × d)
         │
         ▼
@@ -52,8 +52,7 @@ Linear Classifier
         │
         ▼
 Prediction
-'''
-
+```
 
 ## Self-Attention のアルゴリズム
 
