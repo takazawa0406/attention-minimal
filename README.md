@@ -25,6 +25,34 @@ $$
 人工データセットを自作して用いた。
 
 ---
+## モデル構造の概要
+
+本課題で実装したモデルの全体構造を以下に示す。
+Self-Attention を最小構成で用い、系列全体を分類する。
+
+Input Sequence (T × d)
+        │
+        ▼
+Linear Projection
+(Query / Key / Value)
+        │
+        ▼
+Scaled Dot-Product
+Self-Attention
+        │
+        ▼
+Output Sequence (T × d)
+        │
+        ▼
+Average Pooling
+        │
+        ▼
+Linear Classifier
+        │
+        ▼
+Prediction
+
+
 
 ## Self-Attention のアルゴリズム
 
@@ -172,6 +200,18 @@ $$
   → `src/data.py`
 
 ---
+
+## LLM（ChatGPT）の利用について
+
+本課題において、ChatGPT を以下の目的で利用した。
+
+- Self-Attention に関する代表的な論文（Vaswani et al.）の探索
+- README における説明構成や記述内容の整理
+
+アルゴリズムの理解、数式の導出、ならびにコードの実装自体は、
+講義内容および自身の理解に基づいて行った。
+
+
 
 ## 参考文献
 
